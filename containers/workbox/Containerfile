@@ -1,0 +1,31 @@
+ARG jq_version=1.6
+ARG yq_version=4.26.1
+ARG step_version=0.21.0
+ARG helm_version=3.9.2
+
+FROM registry.fedoraproject.org/fedora:36
+LABEL org.opencontainers.image.source="https://github.com/wranders/lab" \
+    org.opencontainers.image.authors="W Anders <w@doubleu.codes>" \
+    org.opencontainers.image.title="workbox" \
+    org.opencontainers.image.description="Tools to configure and deploy Lab"
+ARG jq_version yq_version step_version helm_version TARGETARCH
+RUN dnf install -y bash-completion jq-${jq_version} && dnf clean all
+RUN curl -L \
+    https://github.com/mikefarah/yq/releases/download/v${yq_version}/yq_linux_${TARGETARCH}.tar.gz | \
+    tar -zxv -C /usr/local/bin --extract ./yq_linux_${TARGETARCH} --transform="s/yq_linux_${TARGETARCH}/yq/" && \
+    /usr/local/bin/yq shell-completion bash >> /etc/bash_completion.d/yq.sh
+RUN curl -L \
+    https://github.com/smallstep/cli/releases/download/v${step_version}/step_linux_${step_version}_${TARGETARCH}.tar.gz | \
+    tar -zxv -C /usr/local/bin --strip-components=2 --extract step_${step_version}/bin/step && \
+    /usr/local/bin/step completion bash >> /etc/bash_completion.d/step.sh
+RUN curl -L \
+    https://get.helm.sh/helm-v${helm_version}-linux-${TARGETARCH}.tar.gz | \
+    tar -zxv -C /usr/local/bin --strip-components=1 linux-${TARGETARCH}/helm && \
+    /usr/local/bin/helm completion bash >> /etc/bash_completion.d/helm.sh
+RUN (getent passwd workbox || useradd workbox --uid 1000 -G wheel) && \
+    echo '%wheel ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/wheel-nopasswd &&\
+    chmod 600 /etc/sudoers.d/wheel-nopasswd
+WORKDIR /srv
+RUN chown workbox: /srv
+USER workbox
+CMD /usr/bin/bash
