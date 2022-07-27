@@ -10,7 +10,7 @@ LABEL org.opencontainers.image.source="https://github.com/wranders/lab" \
     org.opencontainers.image.title="workbox" \
     org.opencontainers.image.description="Tools to configure and deploy Lab"
 ARG jq_version yq_version step_version helm_version cosign_version TARGETARCH
-RUN dnf install -y bash-completion jq-${jq_version} && dnf clean all
+RUN dnf install -y bash-completion ncurses jq-${jq_version} && dnf clean all
 WORKDIR /root
 RUN curl -LO https://github.com/mikefarah/yq/releases/download/v${yq_version}/yq_linux_${TARGETARCH}.tar.gz && \
     curl -L https://github.com/mikefarah/yq/releases/download/v${yq_version}/checksums | \
