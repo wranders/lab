@@ -32,6 +32,7 @@ jobs:
         builder: ${{ steps.buildx.outputs.name }}
         file: containers/workbox/Containerfile
         platforms: linux/amd64,linux/arm64
-        push: |
+        push: true
+        tags: |
           ghcr.io/wranders/lab-workbox:latest
           quay.io/wranders/lab-workbox:latest
