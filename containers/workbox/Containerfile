@@ -41,7 +41,7 @@ RUN curl -LO https://get.helm.sh/helm-v${helm_version}-linux-${TARGETARCH}.tar.g
         sha256sum --check --status && \
     tar -zxvf helm-v${helm_version}-linux-${TARGETARCH}.tar.gz -C /usr/local/bin --strip-components=1 linux-${TARGETARCH}/helm && \
     /usr/local/bin/helm completion bash >> /etc/bash_completion.d/helm.sh
-RUN (getent passwd workbox || useradd workbox --uid 1000 -G wheel) && \
+RUN useradd workbox --uid 1000 -G wheel && \
     echo '%wheel ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/wheel-nopasswd &&\
     chmod 600 /etc/sudoers.d/wheel-nopasswd
 WORKDIR /srv
