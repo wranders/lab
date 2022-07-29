@@ -30,6 +30,7 @@ jobs:
     - uses: docker/build-push-action@v3
       with:
         builder: ${{ steps.buildx.outputs.name }}
+        context: containers/workbox/
         file: containers/workbox/Containerfile
         platforms: linux/amd64,linux/arm64
         push: true
