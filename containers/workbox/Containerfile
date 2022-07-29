@@ -5,46 +5,46 @@ ARG helm_version=3.9.2
 ARG cosign_version=1.10.0
 
 FROM registry.fedoraproject.org/fedora:36
+
 LABEL org.opencontainers.image.source="https://github.com/wranders/lab" \
     org.opencontainers.image.authors="W Anders <w@doubleu.codes>" \
     org.opencontainers.image.title="workbox" \
     org.opencontainers.image.description="Tools to configure and deploy Lab"
+
 ARG jq_version yq_version step_version helm_version cosign_version TARGETARCH
-RUN dnf install -y bash-completion ncurses jq-${jq_version} && dnf clean all
+
+RUN dnf install -y --setopt=install_weak_deps=False --nodocs \
+    bash-completion \
+    ncurses \
+    jq-${jq_version} \
+    dbus-daemon \
+    procps \
+    yubico-piv-tool \
+    && dnf clean all
+
 WORKDIR /root
-RUN curl -LO https://github.com/mikefarah/yq/releases/download/v${yq_version}/yq_linux_${TARGETARCH}.tar.gz && \
-    curl -L https://github.com/mikefarah/yq/releases/download/v${yq_version}/checksums | \
-        grep yq_linux_${TARGETARCH}.tar.gz | \
-        sed 's/  /\t/g' | \
-        cut -f21 | \
-        sed "s/$/ yq_linux_${TARGETARCH}.tar.gz/" | \
-        sha512sum --check --status && \
-    tar -zxvf yq_linux_${TARGETARCH}.tar.gz -C /usr/local/bin --extract ./yq_linux_${TARGETARCH} --transform="s/yq_linux_${TARGETARCH}/yq/" && \
-    rm yq_linux_${TARGETARCH}.tar.gz && \
-    /usr/local/bin/yq shell-completion bash >> /etc/bash_completion.d/yq.sh
-RUN curl -LO https://github.com/sigstore/cosign/releases/download/v${cosign_version}/cosign-linux-${TARGETARCH} && \
-    curl -L https://github.com/sigstore/cosign/releases/download/v${cosign_version}/cosign_checksums.txt | \
-        sha256sum --check --ignore-missing --status && \
-    mv cosign-linux-${TARGETARCH} /usr/local/bin/cosign && \
-    chmod +x /usr/local/bin/cosign && \
-    /usr/local/bin/cosign completion bash >> /etc/bash_completion.d/cosign.sh
-RUN curl -LO https://github.com/smallstep/cli/releases/download/v${step_version}/step_linux_${step_version}_${TARGETARCH}.tar.gz && \
-    curl -LO https://github.com/smallstep/cli/releases/download/v${step_version}/step_linux_${step_version}_${TARGETARCH}.tar.gz.sig  && \
-    /usr/local/bin/cosign verify-blob \
-        --key https://raw.githubusercontent.com/smallstep/cli/master/cosign.pub \
-        --signature step_linux_${step_version}_${TARGETARCH}.tar.gz.sig step_linux_${step_version}_${TARGETARCH}.tar.gz && \
-    tar -zxvf step_linux_${step_version}_${TARGETARCH}.tar.gz -C /usr/local/bin --strip-components=2 --extract step_${step_version}/bin/step && \
-    /usr/local/bin/step completion bash >> /etc/bash_completion.d/step.sh && \
-    rm step_linux_${step_version}_${TARGETARCH}.tar.gz step_linux_${step_version}_${TARGETARCH}.tar.gz.sig
-RUN curl -LO https://get.helm.sh/helm-v${helm_version}-linux-${TARGETARCH}.tar.gz && \
-    curl -L https://get.helm.sh/helm-v${helm_version}-linux-${TARGETARCH}.tar.gz.sha256sum | \
-        sha256sum --check --status && \
-    tar -zxvf helm-v${helm_version}-linux-${TARGETARCH}.tar.gz -C /usr/local/bin --strip-components=1 linux-${TARGETARCH}/helm && \
-    /usr/local/bin/helm completion bash >> /etc/bash_completion.d/helm.sh
+
+COPY install.sh /root/
+RUN chmod +x ./install.sh
+
+RUN ./install.sh install_yq $yq_version $TARGETARCH && \
+    ./install.sh install_cosign $cosign_version $TARGETARCH && \
+    ./install.sh install_stepcli $step_version $TARGETARCH && \
+    ./install.sh install_helm $helm_version $TARGETARCH
+
 RUN useradd workbox --uid 1000 -G wheel && \
     echo '%wheel ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/wheel-nopasswd &&\
     chmod 600 /etc/sudoers.d/wheel-nopasswd
-WORKDIR /srv
+
+RUN groupadd --system pcscd && \
+    mkdir -p /run/{dbus,pcscd}
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 RUN chown workbox: /srv
+WORKDIR /srv
 USER workbox
-CMD /usr/bin/bash
+
+ENTRYPOINT [ "/usr/local/bin/entrypoint.sh" ]
+CMD [ "/usr/bin/bash" ]
