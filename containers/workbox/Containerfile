@@ -24,13 +24,13 @@ RUN dnf install -y --setopt=install_weak_deps=False --nodocs \
 
 WORKDIR /root
 
-COPY install.sh /root/
-RUN chmod +x ./install.sh
+COPY ./install.sh /root/install.sh
+RUN chmod +x /root/install.sh
 
-RUN ./install.sh install_yq $yq_version $TARGETARCH && \
-    ./install.sh install_cosign $cosign_version $TARGETARCH && \
-    ./install.sh install_stepcli $step_version $TARGETARCH && \
-    ./install.sh install_helm $helm_version $TARGETARCH
+RUN /root/install.sh install_yq $yq_version $TARGETARCH && \
+    /root/install.sh install_cosign $cosign_version $TARGETARCH && \
+    /root/install.sh install_stepcli $step_version $TARGETARCH && \
+    /root/install.sh install_helm $helm_version $TARGETARCH
 
 RUN useradd workbox --uid 1000 -G wheel && \
     echo '%wheel ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/wheel-nopasswd &&\
@@ -39,7 +39,7 @@ RUN useradd workbox --uid 1000 -G wheel && \
 RUN groupadd --system pcscd && \
     mkdir -p /run/{dbus,pcscd}
 
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 RUN chown workbox: /srv
