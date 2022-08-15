@@ -1,0 +1,43 @@
+#!/bin/bash
+
+usage() {
+    cat <<EOF
+usage: $0 [CMD] [ARG]
+commands:
+    get-hostconfig  print the hostconfig script
+    genpkey         generate new private key
+    yubiconf        Yubikey configuration
+    init            initialize Root CA directory structure
+    create-root     create self-signed Root Certificate
+    shell           enter a shell instead of one-off commands
+arguments:
+    -h, --help      show this dialog
+EOF
+}
+
+if [ $# -eq 0 ]; then usage; exit 1; fi
+case "$1" in
+    get-hostconfig) cat /usr/lib/rootca/hostconfig ;;
+    yubiconf)       shift; /usr/lib/rootca/yubiconf.sh "$@" ;;
+    genpkey)        shift; /usr/lib/rootca/genpkey.sh "$@" ;;
+    init)           shift; /usr/lib/rootca/init.sh "$@" ;;
+    create-root)    shift; /usr/lib/rootca/create-root.sh "$@" ;;
+    shell)
+        shift
+        /usr/lib/rootca/yubikey-init.sh
+        if [[ $# -eq 0 ]]; then
+            exec /usr/bin/env PS1='[rootca:\w]# ' /usr/bin/bash
+        else
+            exec "$@"
+        fi ;;
+    *)
+        OPTS=$(getopt -l "help" -o "h" -a -- "$@")
+        eval set -- "$OPTS"
+        while [[ -n "$1" ]]; do
+            case $1 in
+                -h|--help)  usage; exit 0 ;;
+                --)         shift; break ;;
+            esac
+        done
+        echo "unknown command '${1}'"; usage; exit 1 ;;
+esac

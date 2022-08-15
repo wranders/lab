@@ -1,0 +1,28 @@
+FROM registry.fedoraproject.org/fedora:36
+
+LABEL org.opencontainers.image.source="https://github.com/wranders/lab" \
+    org.opencontainers.image.authors="W Anders <w@doubleu.codes>" \
+    org.opencontainers.image.title="rootca" \
+    org.opencontainers.image.description="Root Certificate Authority Tools"
+
+RUN dnf install -y --setopt=install_weak_deps=False --nodocs \
+    dbus-daemon \
+    procps \
+    bash-completion \
+    yubico-piv-tool \
+    yubikey-manager \
+    ykpers \
+    dateutils \
+    datefudge \
+    openssl \
+    openssl-pkcs11 \
+    util-linux \
+    && dnf clean all
+
+RUN mkdir -p /run/{dbus,pcscd}
+
+COPY ./usr/ /usr/
+
+WORKDIR /srv
+
+ENTRYPOINT [ "/usr/bin/rootca" ]
