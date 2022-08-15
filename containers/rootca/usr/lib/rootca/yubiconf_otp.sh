@@ -11,12 +11,12 @@ arguments:
 EOF
 }
 
-if [ $# -ne 1 ]; then _yubiconf_otp_usage; exit 1; fi
+if [ $# -ne 1 ]; then usage; exit 1; fi
 OPTS=$(getopt -l "help" -o "h" -a -- "$@")
 eval set -- "$OPTS"
 while true; do
     case $1 in
-        -h|--help)  _yubiconf_otp_usage; exit 0 ;;
+        -h|--help)  usage; exit 0 ;;
         --)         shift; break ;;
     esac; shift
 done
@@ -26,6 +26,6 @@ case "$1" in
     disable) ykman config usb --disable OTP --force ;;
     *)
         echo "unknown OTP state '${1}'"
-        _yubiconf_otp_usage
+        usage
         exit 1 ;;
 esac
