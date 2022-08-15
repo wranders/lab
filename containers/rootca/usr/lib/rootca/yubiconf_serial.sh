@@ -22,7 +22,10 @@ while true; do
 done
 /usr/lib/rootca/yubikey-init.sh
 case "$1" in
-    enable)     ykpersonalize -vu1y -o serial-usb-visible ;;
-    disable)    ykpersonalize -vu1y -o -serial-usb-visible ;;
-    *)          echo "unknown OTP state '${1}'"; usage; exit 1 ;;
+    enable)
+        ykpersonalize -vu1y -o serial-usb-visible -o serial-api-visible ;;
+    disable)
+        ykpersonalize -vu1y -o -serial-usb-visible -o -serial-api-visible ;;
+    *)
+        echo "unknown OTP state '${1}'"; usage; exit 1 ;;
 esac
