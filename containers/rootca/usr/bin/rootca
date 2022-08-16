@@ -22,6 +22,7 @@ case "$1" in
     genpkey)        shift; /usr/lib/rootca/genpkey.sh "$@" ;;
     init)           shift; /usr/lib/rootca/init.sh "$@" ;;
     create-root)    shift; /usr/lib/rootca/create-root.sh "$@" ;;
+    new-crl)        shift; /usr/lib/rootca/new-crl.sh "$@" ;;
     shell)
         shift
         /usr/lib/rootca/yubikey-init.sh
