@@ -106,8 +106,6 @@ if [[ $CAYUBIKEY == true ]]; then
         echo "unsupported yubikey PIV slot '${CAYUBIKEYSLOT}'"; usage; exit 1
     fi
 
-    
-
     CAENGINETMPL="-engine pkcs11 -keyform engine"
     CAKEYTMPL="-key \"pkcs11:id=%$PIVSLOTID;type=private\""
     CAPASSTMPL="-passin file:$CAYUBIKEYPIN"
