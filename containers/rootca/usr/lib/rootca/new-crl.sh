@@ -18,7 +18,7 @@ OPTSLONG="help,dir:,passin:,yubikey,pin:"
 OPTSSHORT="hd:P:p:"
 OPTS=$(getopt -l "$OPTSLONG" -o "$OPTSSHORT" -a -- "$@")
 eval set -- "$OPTS"
-declare CADIR CAKEYPASS CAYUBIKEY CAYUBIKEYPIN
+declare CADIR CAKEYPASS CAYUBIKEY=false CAYUBIKEYPIN
 while true; do
     case $1 in
         -h|--help)      usage; exit 0 ;;
