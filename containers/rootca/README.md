@@ -214,3 +214,22 @@ rootca new-crl \
 Both PEM and DER encoded CRLs are generated and stored in
 `ROOTCA/crl` as `root_ca.crl.pem` and `root_ca.crl` respectively. The
 DER-encoded CRL is required ar the CRL Distribution Point (CDP).
+
+### Sign Suboridinate CA
+
+Mount a directory to the working directory of the container, then sign the csr
+and issue the certificate.
+
+```sh
+LRCA_CONTAINER_RUNTIME_ARGS="--volume=${PWD}:/srv" \
+    rootca sign-subca \
+        --in ./issuing_ca.csr.pem \
+        --out ./issuing_ca.crt.pem \
+        --yubikey \
+        --pin /media/YUBISEC/PIN
+```
+
+If the default Distinguished Name policy is used, then the `countryName` (`C`)
+and `organizationName` (`O`) must match the Root CA, and a `commonName` (`CN`)
+and `domainComponent` (`DC`) must be supplied with the request. All other DN
+components are optional.

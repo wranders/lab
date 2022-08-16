@@ -23,6 +23,7 @@ case "$1" in
     init)           shift; /usr/lib/rootca/init.sh "$@" ;;
     create-root)    shift; /usr/lib/rootca/create-root.sh "$@" ;;
     new-crl)        shift; /usr/lib/rootca/new-crl.sh "$@" ;;
+    sign-subca)     shift; /usr/lib/rootca/sign-subca.sh "$@" ;;
     shell)
         shift
         /usr/lib/rootca/yubikey-init.sh
