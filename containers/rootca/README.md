@@ -28,10 +28,20 @@ rootca() {
         ${LRCA_ROOTCAKEY:+--volume=$LRCA_ROOTCAKEY:/media/ROOTCAKEY}    \
         ${LRCA_ROOTCA:+--volume=$LRCA_ROOTCA:/media/ROOTCA}             \
         ${LRCA_ROOTCA:+--env=ROOTCA_DIR=/media/ROOTCA}                  \
+        ${LRCA_CONTAINER_RUNTIME_ARGS}                                  \
         ${LRCA_CONTAINER_IMAGE:-ghcr.io/wranders/lab-rootca:latest} "$@"
     return $?
 }
 ```
+
+| Environment Variable          | Description
+| :-                            | :-
+| `LRCA_YUBIKEY`                | Yubikey device (eg. `/dev/yubikey`)
+| `LRCA_YUBISEC`                | Yubikey Secrets directory (mounted to `/media/YUBISEC`)
+| `LRCA_ROOTCAKEY`              | Root CA Private Key backup directory (mounted to `/media/ROOTCAKEY`)
+| `LRCA_ROOTCA`                 | Root CA Data Directory (mounted to `/media/ROOTCA`)
+| `LRCA_CONTAINER_RUNTIME_ARGS` | Container runtime args (eg `--volume ${PWD}:/srv`)
+| `LRCA_CONTAINER_IMAGE`        | Alternative `rootca` container image
 
 ---
 
