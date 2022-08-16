@@ -29,9 +29,7 @@ if [ ! -d "${1}" ]; then
         exit 1
     fi
 fi
-LC_CTYPE=C dd if=/dev/urandom 2>/dev/null | \
-    tr -cd '[:xdigit:]' | fold -w48 | head -1 > "${1}/KEY"
-LC_CTYPE=C dd if=/dev/urandom 2>/dev/null | \
-    tr -cd '[:digit:]' | fold -w6 | head -1 > "${1}/PIN"
-LC_CTYPE=C dd if=/dev/urandom 2>/dev/null | \
-    tr -cd '[:digit:]' | fold -w8 | head -1 > "${1}/PUK"
+
+LC_CTYPE=C < /dev/urandom tr -cd '[:xdigit:]' | head -c48 > "${1}/KEY"
+LC_CTYPE=C < /dev/urandom tr -cd '[:digit:]' | head -c6 > "${1}/PIN"
+LC_CTYPE=C < /dev/urandom tr -cd '[:digit:]' | head -c8 > "${1}/PUK"
