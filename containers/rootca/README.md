@@ -47,8 +47,8 @@ rootca() {
 
 ## Getting Started
 
-This image contains a helper script to prepare host hardware for easier use in
-the container.
+This image contains a helper script to prepare the host operating system and
+devices for use with the `rootca` container.
 
 ```sh
 podman run -i --rm ghcr.io/wranders/lab-rootca:latest \
@@ -75,7 +75,7 @@ sudo ./hostconfig install-udevrule
 # Format a block device with the directories needed to store CA data.
 # Creates an encrypted partition for Yubikey secrets (YUBISEC), a partition for
 #   OpenSSL data (ROOTCA), and optionally an encrypted partition for storing
-#   the Root CA private key.
+#   the Root CA private key (ROOTCAKEY).
 sudo ./hostconfig format-cadata /dev/sdb
 
 # Decrypts and mounts partitions on the block device. Partitions are expected to
@@ -100,7 +100,7 @@ The `LRCA_YUBIKEY` environment variable can be omitted if you're not using it
 and are instead using a private key directly.
 
 Similarly, `LRCA_ROOTCAKEY` can be omitted if that partition was not created, or
-it is not needed.
+if the private key is not needed.
 
 ### Enable Yubikey Serial Number
 
@@ -185,6 +185,9 @@ rootca init --yubikey --slot 9a \
     --cdp http://ca.doubleu.codes/DoubleU_Root_CA.crl
 ```
 
+The `ROOTCA` directory is populated with the `ca`, `certs`, `crl`, and `db`
+directories, and the `openssl.cnf` configuration file.
+
 ```sh
 rootca create-root \
     --subj "/CN=DoubleU Root CA/O=DoubleU Labs/C=US/DC=doubleu/DC=codes" \
@@ -195,3 +198,19 @@ rootca create-root \
     --install \
     --mgmt /media/YUBISEC/KEY
 ```
+
+The PEM-encoded certificate request, certificate, and public key are stored in
+`ROOTCA/ca` as `root_ca.csr.pem`, `root_ca.crt.pem`, and `root_ca.pub.pem`
+respectively.
+
+### Generate Certificate Revocation List
+
+```sh
+rootca new-crl \
+    --yubikey \
+    --pin /media/YUBISEC/PIN
+```
+
+Both PEM and DER encoded CRLs are generated and stored in
+`ROOTCA/crl` as `root_ca.crl.pem` and `root_ca.crl` respectively. The
+DER-encoded CRL is required ar the CRL Distribution Point (CDP).
