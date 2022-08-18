@@ -5,7 +5,7 @@ on:
   push:
     paths:
     - 'containers/rootca/*'
-    - '!container/rootca/README.md'
+    - '!containers/rootca/README.md'
   workflow_dispatch:
 jobs:
   build:
