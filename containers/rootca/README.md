@@ -24,6 +24,7 @@ rootca() {
     env | grep --color=auto LRCA_
     podman run -it --rm --security-opt=label=disable --name=lab-rootca  \
         ${LRCA_YUBIKEY:+--device=$LRCA_YUBIKEY}                         \
+        ${LRCA_YUBIFIDO:+--device=$LRCA_YUBIFIDO}                       \
         ${LRCA_YUBISEC:+--volume=$LRCA_YUBISEC:/media/YUBISEC}          \
         ${LRCA_ROOTCAKEY:+--volume=$LRCA_ROOTCAKEY:/media/ROOTCAKEY}    \
         ${LRCA_ROOTCA:+--volume=$LRCA_ROOTCA:/media/ROOTCA}             \
@@ -37,6 +38,7 @@ rootca() {
 | Environment Variable          | Description
 | :-                            | :-
 | `LRCA_YUBIKEY`                | Yubikey device (eg. `/dev/yubikey`)
+| `LRCA_YUBIFIDO`               | Yubikey FIDO2 device (eg. `/dev/yubifido`)
 | `LRCA_YUBISEC`                | Yubikey Secrets directory (mounted to `/media/YUBISEC`)
 | `LRCA_ROOTCAKEY`              | Root CA Private Key backup directory (mounted to `/media/ROOTCAKEY`)
 | `LRCA_ROOTCA`                 | Root CA Data Directory (mounted to `/media/ROOTCA`)
@@ -62,14 +64,17 @@ chmod +x hostconfig
 sudo ./hostconfig install-selpolicy
 
 # Install the udev rule that will create predictable names for Yubikey devices.
-# Yubikeys without serial numbers exposed via USB will be mounted at
-#   '/dev/yubikey'.
-# Yubikeys with serial numbers exposed visa USB will be mounted at
-#   '/dev/yubikeyXXXXXXXXXX' where 'XXXXXXXXXX' is the serial number.
+# Yubikey PIV (Smartcard) applications without serial numbers exposed via USB
+#   will be mounted at '/dev/yubikey', whereas having serial numbers exposed
+#   will appear as '/dev/yubikeyXXXXXXXXXX' where 'XXXXXXXXXX' is the serial
+#   number.
+# Yubikey FIDO2 applications without serial numbers exposed via USB will be
+#   mounted at '/dev/yubifido', whereas having serial numbers exposed will
+#   appear as '/dev/yubifidoXXXXXXXXXX' where 'XXXXXXXXXX' is the serial number.
 # If multiple Yubikeys are inserted in the host without serial numbers exposed,
-#   the '/dev/yubikey' mountpoint will be linked to the last Yubikey to be
-#   inserted. Enabling serial numbers via USB is recommended if you use multiple
-#   yubikey devices
+#   the '/dev/yubikey' and '/dev/yubifido' mountpoints will be linked to the
+#   last Yubikey to be inserted. Enabling serial numbers via USB is recommended
+#   if you use multiple Yubikey devices
 sudo ./hostconfig install-udevrule
 
 # Format a block device with the directories needed to store CA data.
@@ -233,3 +238,86 @@ If the default Distinguished Name policy is used, then the `countryName` (`C`)
 and `organizationName` (`O`) must match the Root CA, and a `commonName` (`CN`)
 and `domainComponent` (`DC`) must be supplied with the request. All other DN
 components are optional.
+
+## Deploy Certificate and CRL to Github
+
+To achieve this, we're going to rely on the Yubikey's FIDO2 application to
+leverage repository deploy keys. Certificate and CRLs will be uploaded to this
+repository and published via Github Pages, making the AIA and CDP locations
+configured on the Root Certificate available.
+
+### Set up FIDO2
+
+```sh
+export LRCA_YUBIFIDO=/dev/yubifido0123456789
+```
+
+```sh
+rootca shell ykman fido reset -f
+```
+
+```sh
+rootca shell ykman fido access change-pin
+```
+
+```sh
+rootca shell mkdir /media/YUBISEC/GIT
+```
+
+```sh
+rootca shell \
+    ssh-keygen -t ed25519-sk \
+        -C RootCADeploy \
+        -O resident \
+        -O application=ssh:RootCADeploy \
+        -O verify-required \
+        -f /media/YUBISEC/GIT/id_ed25519_sk
+```
+
+If the console hangs, you may need to touch the key.
+
+```sh
+rootca shell cat /media/YUBISEC/GIT/id_ed25519_sk.pub
+```
+
+In the repository, go to `Settings` > `Deploy keys` > `Add deploy key`. Pick an
+easily identifiable name for the `Title`, paste the public key on the `Key` box,
+and be sure to check `Allow write access`.
+
+![create deploy key](./.readme/deploy-key.png)
+
+Clone repo, copy DER-encoded Certificate and CRL.
+
+```sh
+git add .
+```
+
+```sh
+GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG=/dev/null HOME=/dev/null \
+    git -c user.name=RootCADeploy -c user.email=admin@doubleu.codes \
+        commit -m 'updated assets'
+```
+
+OR
+
+```sh
+GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG=/dev/null HOME=/dev/null \
+    git -c user.name=RootCADeploy -c user.email=admin@doubleu.codes \
+        -c user.signingkey=0123456789ABCDEF0123456789ABCDEF01234567 \
+        -c commit.gpgsign=trues -c gpg.program=/usr/bin/gpg \
+        commit -m 'updated assets'
+```
+
+```sh
+KNOWNHOSTS=$(mktemp) && \
+    curl -s https://api.github.com/meta | \
+    jq -r '.ssh_keys[]' | \
+    while read -r key; do echo "github.com $key"; done > $KNOWNHOSTS
+```
+
+```sh
+GIT_SSH_COMMAND="ssh -F /dev/null \
+    -i /media/YUBISEC/GIT/id_ed25519_sk \
+    -o UserKnownHostsFile=$KNOWNHOSTS" \
+    git push git@github.com:wranders/ca
+```
