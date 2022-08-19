@@ -9,6 +9,8 @@ commands:
     yubiconf        Yubikey configuration
     init            initialize Root CA directory structure
     create-root     create self-signed Root Certificate
+    new-crl         create new Certificate Revocation List
+    sign-subca      Sign a new Subordinate Certificate Signing Request
     shell           enter a shell instead of one-off commands
 arguments:
     -h, --help      show this dialog
