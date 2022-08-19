@@ -1,0 +1,5 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "containers/rootca-rs/Cargo.toml",
+    ]
+}
