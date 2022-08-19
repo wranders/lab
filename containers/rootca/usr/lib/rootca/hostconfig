@@ -58,6 +58,12 @@ SUBSYSTEM=="usb", \
     ATTRS{idProduct}=="0401|0402|0403|0404|0405|0406|0407", \
     SYMLINK+="yubikey$attr{serial}", \
     MODE="0666"
+
+SUBSYSTEM=="hidraw", \
+    ATTRS{idVendor}=="1050", \
+    ATTRS{idProduct}=="0401|0402|0403|0404|0405|0406|0407", \
+    SYMLINK+="yubifido$attr{serial}", \
+    MODE="0666"
 EOF
     udevadm control --reload
     udevadm trigger
