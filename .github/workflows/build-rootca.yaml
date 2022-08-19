@@ -6,6 +6,7 @@ on:
     paths:
     - 'containers/rootca/*'
     - '!containers/rootca/README.md'
+    - '!containers/rootca/.readme/*'
   workflow_dispatch:
 jobs:
   build:
