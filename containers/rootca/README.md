@@ -241,6 +241,33 @@ components are optional.
 
 ## Deploy Certificate and CRL to Github
 
+There are few ways to acheive this, and pros & cons for both.
+
+- Manually
+  - Pros:
+    - Simple
+  - Cons:
+    - No automation
+- SSH deploy keys
+  - Pros:
+    - Can leverage FIDO on a Yubikey
+    - FIDO private keys cannot be leaked; 2FA guaranteed
+  - Cons:
+    - Pushing to a branch requires manual creation of a Pull Request
+    - FIDO may require non-containerized software to configure
+    - No `Verified` commits without signing commits manually
+      - At this point, why bother scripting?
+- API via Github App (Bot)
+  - Pros:
+    - All commits `Verified`
+    - Can automatically create Pull Request to prevent clobbering `master`
+    - Doesn't rely on FIDO, so guaranteed to run containerized
+    - Private key for token generation can be stored securely on Yubikey
+  - Cons:
+    - Most "complex"
+    - Can be rate-limited, but unlikely
+    - Apps/bots have their own commit history
+
 To achieve this, we're going to rely on the Yubikey's FIDO2 application to
 leverage repository deploy keys. Certificate and CRLs will be uploaded to this
 repository and published via Github Pages, making the AIA and CDP locations
@@ -286,38 +313,160 @@ and be sure to check `Allow write access`.
 
 ![create deploy key](./.readme/deploy-key.png)
 
-Clone repo, copy DER-encoded Certificate and CRL.
-
 ```sh
+REPO="wranders/ca"
+DEPLOY_BRANCH="deploy/update-ca"
+USER_NAME="RootCADeploy"
+USER_EMAIL="admin@doubleu.codes"
+CRT_NAME="DoubleU_Root_CA.crt"
+CRT_PATH="/media/ROOTCA/ca/root_ca.crt"
+CRL_NAME="DoubleU_Root_CA.crl"
+CRL_PATH="/media/ROOTCA/crl/root_ca.crl"
+################################################################################
+pushd $(mktemp -d) >/dev/null
+git clone https://github.com/$REPO .
+if [[ -z $DEPLOY_BRANCH ]]; then
+    git checkout -b $DEPLOY_BRANCH
+fi
+cp $CRT_PATH ./$CRT_NAME
+cp $CRL_PATH ./$CRL_NAME
 git add .
-```
-
-```sh
 GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG=/dev/null HOME=/dev/null \
-    git -c user.name=RootCADeploy -c user.email=admin@doubleu.codes \
-        commit -m 'updated assets'
-```
-
-OR
-
-```sh
-GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG=/dev/null HOME=/dev/null \
-    git -c user.name=RootCADeploy -c user.email=admin@doubleu.codes \
-        -c user.signingkey=0123456789ABCDEF0123456789ABCDEF01234567 \
-        -c commit.gpgsign=trues -c gpg.program=/usr/bin/gpg \
-        commit -m 'updated assets'
-```
-
-```sh
+    git -c user.name=$USER_NAME -c user.email=$USER_EMAIL \
+    commit -m 'updated ca assets'
 KNOWNHOSTS=$(mktemp) && \
     curl -s https://api.github.com/meta | \
     jq -r '.ssh_keys[]' | \
     while read -r key; do echo "github.com $key"; done > $KNOWNHOSTS
-```
-
-```sh
 GIT_SSH_COMMAND="ssh -F /dev/null \
     -i /media/YUBISEC/GIT/id_ed25519_sk \
     -o UserKnownHostsFile=$KNOWNHOSTS" \
-    git push git@github.com:wranders/ca
+    git push git@github.com:$REPO $(git branch --show-current)
+popd >/dev/null
+```
+
+---
+
+Installing the App private key to the Yubikey. A certificate is generated from
+it so the PIV slot can be more easily identified as occupied.
+
+```sh
+PRIV_KEY="github-app.2001-01-01.private-key.pem"
+APP_ID=229890
+################################################################################
+b64enc(){openssl enc -base64 -A | tr '+/' '-_' | tr -d '=';}
+json(){jq -c . | LC_CTYPE=C tr -d '\n';}
+HEADER='{"alg":"RS256","typ":"JWT"}'
+IAT=$(date -ud '60 seconds ago' +'%s')
+EXP=$(date -ud '10 minutes' +'%s')
+PAYLOAD="{\"iat\":$IAT,\"exp\":$EXP,\"iss\":\"$APP_ID\"}"
+CONTENT="$(json <<< $HEADER | b64enc).$(json <<< $PAYLOAD | b64enc)"
+SIG=$(printf %s "$CONTENT" | openssl dgst -binary -sha256 -sign $PRIV_KEY)
+JWT=$(printf '%s.%s\n' $CONTENT $SIG)
+NAME=$(curl -s -X GET \
+    -H "Authorization: Bearer $JWT" \
+    https://api.github.com/app | jq -r '.name' )
+ykman piv keys import 9d $PRIV_KEY
+openssl req -key $PRIV_KEY -subj "/CN=$NAME" -x509 | \
+    ykman piv certificates import 9d -
+```
+
+```sh
+REPO="wranders/ca"
+REPO_BASE="master"
+DEPLOY_BRANCH="my-bot/update-ca"
+CRT_NAME="DoubleU_Root_CA.crt"
+CRT_PATH="/media/ROOTCA/ca/root_ca.crt"
+CRL_NAME="DoubleU_Root_CA.crl"
+CRL_PATH="/media/ROOTCA/crl/root_ca.crl"
+APP_ID=229890
+# APP_KEY="/media/YUBISEC/GIT/app.private.key"
+################################################################################
+b64enc(){openssl enc -base64 -A | tr '+/' '-_' | tr -d '=';}
+json(){jq -c . | LC_CTYPE=C tr -d '\n';}
+OSSLCNF=$(mktemp)
+cat <<EOF > $OSSLCNF
+[default]
+openssl_conf = openssl_def
+[openssl_def]
+engines = engine_def
+[engine_def]
+pkcs11 = pkcs11_def
+[pkcs11_def]
+engine_id = pkcs11 
+MODULE_PATH = /usr/lib64/libykcs11.so.2
+EOF
+HEADER='{"alg":"RS256","typ":"JWT"}'
+IAT=$(date -ud '60 seconds ago' +'%s')
+EXP=$(date -ud '10 minutes' +'%s')
+PAYLOAD="{\"iat\":$IAT,\"exp\":$EXP,\"iss\":\"$APP_ID\"}"
+CONTENT="$(json <<< $HEADER | b64enc).$(json <<< $PAYLOAD | b64enc)"
+# SIG=$(printf %s "$CONTENT" | openssl dgst -binary -sha256 -sign $APP_KEY)
+SIG=$(printf %s "$CONTENT" | \
+    OPENSSL_CONF=./openssl.cnf openssl pkeyutl \
+    -engine pkcs11 -keyform engine \
+    -digest sha256 -rawin \
+    -inkey "pkcs11:id=%03;type=private" \
+    -passin file:/run/media/w/YUBISEC/PIN | b64enc
+)
+rm $OSSLCNF
+JWT=$(printf '%s.%s\n' $CONTENT $SIG)
+INSTALLATION=$(curl -s -X GET \
+    -H "Authorization: Bearer $JWT" \
+    -H "Accept: application/vnd.github+json" \
+    https://api.github.com/installation/repositories | \
+    jq -r ".repositories[] | select(.full_name==$REPO) | .id")
+TOKEN=$(curl -s -X POST \
+    -H "Authorization: Bearer $JWT" \
+    -H "Accept: application/vnd.github+json" \
+    https://api.github.com/app/installations/$INSTALLATION/access_tokens | \
+    jq -r '.token')
+MASTER_SHA=$(curl -s -X GET -H "Authorization: token $(cat token)" \
+    https://api.github.com/repos/$REPO/git/ref/heads/master | \
+    jq -r '.object.sha'
+)
+curl -s -X POST -H "Authorization: token $(cat token)" \
+    https://api.github.com/repos/$REPO/git/refs \
+    -d $(jq -nc \
+        --arg sha $MASTER_SHA \
+        --arg branch $DEPLOY_BRANCH \
+        '{
+            "ref":"refs/heads/$branch",
+            "sha":$sha
+        }'
+    )
+curl -s -X PUT -H "Authorization: token $(cat token)" \
+    https://api.github.com/repos/$REPO/contents/$CRT_NAME \
+    -d "$(jq -nc \
+        --arg content $(base64 $CRT_PATH) \
+        --arg branch $DEPLOY_BRANCH \
+        '{
+            "message":"commit msg",
+            "branch":$branch,
+            "content":$content
+        }'
+    )"
+curl -s -X PUT -H "Authorization: token $(cat token)" \
+    https://api.github.com/repos/$REPO/contents/$CRL_NAME \
+    -d "$(jq -nc \
+        --arg content $(base64 $CRL_PATH) \
+        --arg branch $DEPLOY_BRANCH \
+        '{
+            "message":"commit msg",
+            "branch":$branch,
+            "content":$content
+        }'
+    )"
+curl -s -X POST -H "Authorization: token $(cat token)" \
+    https://api.github.com/repos/$REPO/pulls \
+    -d "$(jq -nc \
+        --arg branch $DEPLOY_BRANCH \
+        --arg base $REPO_BASE \
+        '{
+            "title":"Update Certificate and CRL",
+            "body":"PLACEHOLDER",
+            "head":$branch,
+            "base":$base
+        }'
+    )"
 ```
