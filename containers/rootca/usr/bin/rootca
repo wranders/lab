@@ -2,34 +2,30 @@
 
 usage() {
     cat <<EOF
-usage: $0 [CMD] [ARG]
+usage: $0 <COMMAND> <ARGUMENT>
 commands:
-    get-hostconfig  print the hostconfig script
-    genpkey         generate new private key
-    yubiconf        Yubikey configuration
-    init            initialize Root CA directory structure
-    create-root     create self-signed Root Certificate
-    new-crl         create new Certificate Revocation List
-    sign-subca      Sign a new Subordinate Certificate Signing Request
-    shell           enter a shell instead of one-off commands
+    config      configure Root CA and Yubikey devices
+    crl         issue revocation lists and revoke certificates
+    deploy      deploy certificates and CRLs
+    sign        sign subordinate certicate signing requests
+    shell       enter an interactive bash shell
+    db          CA database operations
 arguments:
-    -h, --help      show this dialog
+    -h,--help   show this dialog
 EOF
 }
 
 if [ $# -eq 0 ]; then usage; exit 1; fi
-case "$1" in
-    get-hostconfig) cat /usr/lib/rootca/hostconfig ;;
-    yubiconf)       shift; /usr/lib/rootca/yubiconf.sh "$@" ;;
-    genpkey)        shift; /usr/lib/rootca/genpkey.sh "$@" ;;
-    init)           shift; /usr/lib/rootca/init.sh "$@" ;;
-    create-root)    shift; /usr/lib/rootca/create-root.sh "$@" ;;
-    new-crl)        shift; /usr/lib/rootca/new-crl.sh "$@" ;;
-    sign-subca)     shift; /usr/lib/rootca/sign-subca.sh "$@" ;;
+USR="$(realpath $(dirname -- "$(readlink -f "${BASH_SOURCE}")")/../lib/rootca)"
+case $1 in
+    config) shift; $USR/config.sh "$@" ;;
+    crl)    shift; $USR/crl.sh "$@" ;;
+    deploy) shift; $USR/deploy.sh "$@" ;;
+    sign)   shift; $USR/sign.sh "$@" ;;
+    db)     shift; $USR/db.sh "$@" ;;
     shell)
-        shift
-        /usr/lib/rootca/yubikey-init.sh
-        if [[ $# -eq 0 ]]; then
+        shift; /usr/lib/rootca/sc-init.sh
+        if [ $# -eq 0 ]; then
             exec /usr/bin/env PS1='[rootca:\w]# ' /usr/bin/bash
         else
             exec "$@"
@@ -37,11 +33,11 @@ case "$1" in
     *)
         OPTS=$(getopt -l "help" -o "h" -a -- "$@")
         eval set -- "$OPTS"
-        while [[ -n "$1" ]]; do
+        while true; do
             case $1 in
                 -h|--help)  usage; exit 0 ;;
                 --)         shift; break ;;
-            esac
+            esac; shift
         done
-        echo "unknown command '${1}'"; usage; exit 1 ;;
+        echo "unknown command '$1'"; usage; exit 1 ;;
 esac

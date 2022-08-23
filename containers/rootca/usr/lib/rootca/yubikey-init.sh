@@ -7,7 +7,7 @@ if [[ -z "$PCSCD_RUNNING" ]]; then
     pcscd --hotplug
 fi
 
-declare DBUS_DAEMON_RUNNING=$(ps aux | grep [d]bus-daemon)
+declare DBUS_DAEMON_RUNNING=$(ps aux | grep [d]bus)
 if [[ -z "$DBUS_DAEMON_RUNNING" ]]; then
     echo "starting dbus-daemon"
     dbus-daemon --config-file=/usr/share/dbus-1/system.conf

@@ -6,25 +6,24 @@ LABEL org.opencontainers.image.source="https://github.com/wranders/lab" \
     org.opencontainers.image.description="Root Certificate Authority Tools"
 
 RUN dnf install -y --setopt=install_weak_deps=False --nodocs \
-    dbus-daemon \
-    procps \
-    bash-completion \
-    yubico-piv-tool \
-    yubikey-manager \
-    ykpers \
-    dateutils \
+    bash \
+    core-utils \
+    util-linux \
     datefudge \
     openssl \
     openssl-pkcs11 \
-    util-linux \
-    git \
     jq \
-    openssh \
+    dbus-daemon \
+    procps \
+    yubico-piv-tool \
+    yubikey-manager \
+    ykpers\
+    pinentry \
     && dnf clean all
 
 RUN mkdir -p /run/{dbus,pcscd}
 
-COPY ./usr/ /usr/
+COPY ./usr /usr/
 
 WORKDIR /srv
 
