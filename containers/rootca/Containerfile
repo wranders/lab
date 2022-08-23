@@ -7,7 +7,6 @@ LABEL org.opencontainers.image.source="https://github.com/wranders/lab" \
 
 RUN dnf install -y --setopt=install_weak_deps=False --nodocs \
     bash \
-    core-utils \
     util-linux \
     datefudge \
     openssl \
@@ -23,7 +22,7 @@ RUN dnf install -y --setopt=install_weak_deps=False --nodocs \
 
 RUN mkdir -p /run/{dbus,pcscd}
 
-COPY ./usr /usr/
+COPY ./usr/ /usr/
 
 WORKDIR /srv
 
