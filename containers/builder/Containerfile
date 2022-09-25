@@ -1,0 +1,22 @@
+ARG go_ver=1.19.1
+
+FROM registry.fedoraproject.org/fedora:36 AS builder
+ARG go_ver TARGETARCH
+RUN dnf install -y --nodocs --release=36 --installroot=/builder \
+    --setopt=install_weak_deps=False \
+    bash \
+    coreutils \
+    git \
+    make \
+    && dnf --installroot=/builder clean all
+RUN curl -L "https://go.dev/dl/go${go_ver}.linux-${TARGETARCH}.tar.gz" -o - | \
+    tar -xz -C /builder/usr/local
+
+FROM scratch
+LABEL org.opencontainers.image.source="https://github.com/wranders/lab" \
+    org.opencontainers.image.authors="W Anders <w@doubleu.codes>" \
+    org.opencontainers.image.title="builder" \
+    org.opencontainers.image.description="Lab container build tools"
+COPY --from=builder /builder /
+ENV PATH="${PATH}:/usr/local/go/bin"
+WORKDIR /srv/
