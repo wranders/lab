@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow
 ---
-name: Build Lab Builder Image
+name: Build Lab DNS Image
 on:
   push:
     paths:
