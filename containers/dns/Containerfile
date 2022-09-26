@@ -1,5 +1,5 @@
 ARG cdns_ver=1.10.0
-ARG cdns_filter_ver=0.1.1
+ARG cdns_filter_ver=0.2.1
 
 FROM ghcr.io/wranders/lab-builder AS builder
 ARG cdns_ver cdns_filter_ver
