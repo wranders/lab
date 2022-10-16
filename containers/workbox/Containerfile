@@ -17,9 +17,9 @@ RUN dnf install -y --setopt=install_weak_deps=False --nodocs \
     ncurses \
     jq \
     util-linux \
+    exa \
+    openssl \
     && dnf clean all
-
-WORKDIR /root
 
 COPY ./install.sh /root/install.sh
 RUN chmod +x /root/install.sh
@@ -33,9 +33,11 @@ RUN useradd workbox --uid 1000 -G wheel && \
     echo '%wheel ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/wheel-nopasswd &&\
     chmod 600 /etc/sudoers.d/wheel-nopasswd
 
-RUN chown workbox: /srv
-WORKDIR /srv
+COPY entrypoint.sh /usr/local/libexec/entrypoint.sh
+
 USER workbox
+WORKDIR /home/workbox
+VOLUME [ "/home/workbox" ]
 
-ENTRYPOINT [ "/usr/bin/bash" ]
-
+ENTRYPOINT [ "/usr/local/libexec/entrypoint.sh" ]
+CMD [ "/usr/bin/bash", "--login" ]
