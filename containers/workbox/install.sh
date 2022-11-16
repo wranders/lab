@@ -8,12 +8,17 @@ install_yq() {
     ARCHIVE="${BASEURL}/yq_linux_${ARCH}.tar.gz"
     echo $ARCHIVE
     curl -# -LO $ARCHIVE
+    SUM_ORDER="${BASEURL}/checksums_hashes_order"
+    echo $SUM_ORDER
+    SUM_LINE=$(curl -# -L $SUM_ORDER | \
+        grep -n 'SHA-512' | \
+        cut -d':' -f1)
     SUM="${BASEURL}/checksums"
     echo $SUM
     curl -# -L $SUM | \
         grep "yq_linux_${ARCH}.tar.gz" | \
         sed 's/  /\t/g' | \
-        cut -f21 | \
+        cut -f$(($SUM_LINE + 1)) | \
         sed "s/$/ yq_linux_${ARCH}.tar.gz/" | \
         sha512sum --check --status
     SUMSTATUS=$?
