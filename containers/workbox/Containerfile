@@ -1,4 +1,4 @@
-ARG yq_version=4.26.1
+ARG yq_version=4.30.4
 ARG step_version=0.21.0
 ARG helm_version=3.9.2
 ARG cosign_version=1.10.0
