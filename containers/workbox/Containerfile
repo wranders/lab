@@ -3,7 +3,7 @@ ARG step_version=0.21.0
 ARG helm_version=3.9.2
 ARG cosign_version=1.10.0
 
-FROM registry.fedoraproject.org/fedora:36
+FROM registry.fedoraproject.org/fedora:37
 
 LABEL org.opencontainers.image.source="https://github.com/wranders/lab" \
     org.opencontainers.image.authors="W Anders <w@doubleu.codes>" \
