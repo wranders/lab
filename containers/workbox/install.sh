@@ -65,11 +65,11 @@ install_stepcli() {
     SIG="${BASEURL}/step_linux_${VERSION}_${ARCH}.tar.gz.sig"
     echo $SIG
     curl -# -LO $SIG
-    PUB="https://raw.githubusercontent.com/smallstep/cli/master/cosign.pub"
-    echo $PUB
-    curl -# -LO $PUB
-    "${ROOT}/usr/local/bin/cosign" verify-blob \
-        --key cosign.pub \
+    CERT="${BASEURL}/step_linux_${VERSION}_${ARCH}.tar.gz.pem"
+    echo $CERT
+    curl -# -LO $CERT
+    COSIGN_EXPERIMENTAL=1 "${ROOT}/usr/local/bin/cosign" verify-blob \
+        --certificate "step_linux_${VERSION}_${ARCH}.tar.gz.pem" \
         --signature "step_linux_${VERSION}_${ARCH}.tar.gz.sig" \
         "step_linux_${VERSION}_${ARCH}.tar.gz"
     SUMSTATUS=$?
